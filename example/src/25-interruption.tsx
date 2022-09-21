@@ -24,7 +24,7 @@ export const request = (input: RequestInfo, init?: RequestInit | undefined) =>
         resume(Effect.fail(new FetchError(error)));
       });
     return Either.left(
-      Effect.succeed(() => {
+      Effect.sync(() => {
         controller.abort();
       })
     );

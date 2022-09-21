@@ -1272,7 +1272,7 @@ export const request = (input: RequestInfo, init?: RequestInit | undefined) =>
 
     // return what to do on interrupt
     return Either.left(
-      Effect.succeed(() => {
+      Effect.sync(() => {
         controller.abort();
       })
     );
