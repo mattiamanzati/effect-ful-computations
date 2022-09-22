@@ -27,6 +27,24 @@ css: unocss
 
 Mattia Manzati @ React Alicante 2022
 
+---
+layout: image-left
+image: /image-agenda.avif
+---
+
+# Today's agenda
+
+Let's dive in the world of computations:
+
+- State of the art with plain JavaScript
+- Problems you may have you don't know about 
+- Is there a better way to define them?
+
+<!--
+Today we're gonna dive together in the world of computations.
+We're gonna see what's the state of the art of building computations with JavaScript, we'll see what problems we may encounter, and finally we'll find a better way to define computations.
+-->
+
 <!--
 Today's gonna be a week long journey.
 And this will not be a journey in some mystical fantasy land with unicorns and dragons, princess.
@@ -188,12 +206,8 @@ async function getListItems(): Promise<ListItem[]> {
 }
 
 export default function TodoList() {
-  const [items, setItems] = React.useState<ListItem[]>([])
-  
-  React.useEffect(() => {
-    getListItems().then(setItems)
-  }, [])
-
+  // ...
+  getListItems().then(setItems)
   // ...
 }
 ```
@@ -421,15 +435,7 @@ layout: center
 ## No way to interrupt me!
 
 ```ts {4-6} {maxHeight:'450px'}
-export default function TodoList() {
-  const [items, setItems] = React.useState<ListItem[]>([])
-  
-  React.useEffect(() => {
-    getListItems().then(setItems)
-  }, [])
-
-  // ...
-}
+getListItems().then(setItems)
 ```
 <!--
 If we take a step back at were our computation is invoked, we can clearly see that no cleanup function is defined, so once we started fetching, it cannot be interrupted in any way.
@@ -442,18 +448,11 @@ layout: center
 ## Nevermind, I'll stop when you'll tell me to!
 
 ```ts {4-9} {maxHeight:'450px'}
-export default function TodoList() {
-  const [items, setItems] = React.useState<ListItem[]>([])
-  
-  React.useEffect(() => {
-    // start fetching handling interruption
-    const controller = new AbortController()
-    getListItems(controller.signal).then(setItems);
-    return () => controller.abort()
-  }, []);
-
-  // ...
-}
+// start fetching handling interruption
+const controller = new AbortController()
+getListItems(controller.signal).then(setItems);
+// return a way to interrupt the computation
+return () => controller.abort()
 ```
 
 <!--
@@ -810,7 +809,7 @@ A data structure to define computations in a Fiber-based runtime
 
 <!--
 And that's what Effect tries to solve.
-Effect is a data structure that define computations, and those are then executed on a Fiber-based runtime. Effect is based on an existing Scala library called ZIO and models lot of its data structure around it.
+Effect is a structured concurrency library that is optimized for ease of use and that is backed by a powerful runtime "such as the one you're may be familiar with for React fibers". Effect is based on an existing Scala library called ZIO and models lot of its data structure around it.
 
 Effect APIs are pipeable and based on good functiona programming priciples. 
 
