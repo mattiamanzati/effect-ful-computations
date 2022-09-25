@@ -34,35 +34,28 @@ image: /image-agenda.avif
 
 # Today's agenda
 
-Let's dive in the world of computations:
+A deep dive in the world of computations
 
 - State of the art with plain JavaScript
 - Problems you may have you don't know about 
+- Are we satisfied?
 - Is there a better way to define them?
 
 <!--
 Today we're gonna dive together in the world of computations.
-We're gonna see what's the state of the art of building computations with JavaScript, we'll see what problems we may encounter, and finally we'll find a better way to define computations.
--->
-
-<!--
-Today's gonna be a week long journey.
-And this will not be a journey in some mystical fantasy land with unicorns and dragons, princess.
-No, not at all.
-This will be the real journey that any developer, like you or me, will someday start out there in the JavaScript world when building any application.
+We're gonna start by acknoledge what's the state of the art of building computations with JavaScript, we'll see what problems we may encounter, and finally we'll find a better way to define computations.
 -->
 
 ---
 layout: image-right
-image: >-
-  https://images.unsplash.com/photo-1527150602-a98f7a6f2746?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=3024&q=80
+image: /image-todo-list.avif
 ---
 
-# Today's Companion
+# Let's do computations
 
-Let's build a TODO management application.
+Wanna build a TODO application?
 
-```ts{all|1-5|7-13}
+```ts{all}
 export type UserId = number;
 export interface User {
   id: UserId;
@@ -92,15 +85,16 @@ layout: fact
 ---
 
 # Monday
+Let's get stuff done
 
 ---
 layout: showcase-left
 image: /image-01-sync.gif
 ---
 
-## Mockup
+# A sample computation
 
-Here's our computation:
+Let's take a look at an easy one
 
 - Fetch list of TODOs
 - Fetch assigned User Name
@@ -115,36 +109,27 @@ Rather than explaining you the entire application, we'll focus on a simple compu
 -->
 
 ---
-layout: center
+layout: default
 ---
 
-## Sync computation
+# Sync computation
 
-```ts {all|4|6-15|8|9-14|20|22-24} {maxHeight:'450px'}
+Everything is in memory
+
+```ts {all} {maxHeight:'450px'}
 function getListItems(): ListItem[] {
     const result: ListItem[] = []
 
-    const todos: Todo[] = U.TODOS
-
-    for(let i = 0; i < todos.length; i++){
-        const todo = todos[i]
+    for(let todo of U.TODOS){
         const user: User = U.USERS.find(e => e.id === todo.userId)!
-        result.push({
-            id: todo.id,
-            title: todo.title,
-            username: user.username,
-            completed: todo.completed
-        })
+        result.push({ ...user, ...todo });
     }
     return result
 }
 
 export default function TodoList(){
     const items: ListItem[] = getListItems()
-
-    return <U.TodoListContainer>
-        {items.map(listItem => <U.TodoListEntry key={listItem.id} {...listItem} />)}
-    </U.TodoListContainer>
+    // ...
 }
 ```
 
@@ -153,7 +138,6 @@ Rather than building the entire backend for our application, we'll start by just
 
 We'll just write some logic and leave the actual data fetching implementation of data to future Mattia, and for sure he'll be more than happy to implement that.
 
-Let's start by getting our dummy TODOs from our variable.
 We'll then loop for each todo, for each todo we'll find its assigned user based on the user id, and we'll finally build the data that will be used by our render component.
 
 In our component we can now simply call that function, and produce the output by just looping the items and no additional work is needed here in render.
@@ -164,44 +148,32 @@ layout: fact
 ---
 
 # Tuesday
-
+I Promise<> you everything will be fine
 <!--
 Future-Mattia really thinks that past Mattia is a piece of garbage.
 -->
 ---
-layout: center
+layout: default
 ---
 
-## Everything is actually Async
+# Everything is actually Async
 
-```ts {all|1|4-8|14-18|20-26|32-36} {maxHeight:'450px'}
+You know, fetching and things
+
+```ts {all} {maxHeight:'450px'}
 async function getListItems(): Promise<ListItem[]> {
   const result: ListItem[] = [];
 
-  // get all todos
-  const todosResponse = await fetch(
-    "https://jsonplaceholder.typicode.com/todos"
-  );
+  const todosResponse = await fetch('https://jsonplaceholder.typicode.com/todos');
   const todos: Todo[] = await todosResponse.json();
 
-  // for each todo
-  for (let i = 0; i < todos.length; i++) {
-    const todo = todos[i];
+  for (let todo of todos) {
+    const userResponse = await fetch('https://jsonplaceholder.typicode.com/users/' + todo.userId);
+    const user: User = await userResponse.json();
 
-    // get its user data
-    const userResponse = await fetch(
-      "https://jsonplaceholder.typicode.com/users/" + todo.userId
-    );
-    const user: User = await userResponse.json()
-
-    // push the list item into result
-    result.push({
-      id: todo.id,
-      title: todo.title,
-      username: user.username,
-      completed: todo.completed,
-    });
+    result.push({ ...user, ...todo });
   }
+
   return result;
 }
 
@@ -214,15 +186,11 @@ export default function TodoList() {
 
 <!--
 Turn's out that fetching data from the backend is an asynchronous operation.
-This means that we have to rewrite all the dumb code written by past Mattia and lift it to returning Promises [X].
+This means that we have to rewrite all the dumb code written by past Mattia and lift it to returning Promises.
 
-Here's our new and revised computation.
+We'll use fetch to ask our backend the list of TODOs, we'll convert the response to a JSON object, for each todo we'll also fetch its assigned user and finally build the data object needed by our UI. 
 
-We'll use fetch to ask our backend the list of TODOs, we'll convert the response to a JSON object [X], and thanks to async/await we can easily rewrite our code to work in async mode by just putting here and there some async and await keywords.
-
-As past mattia did, [X] for each todo we'll also fetch its assigned user [X] and finally build the data object needed by our UI. 
-
-[X] We'll also need to change that a little to accomodate our async code.
+Seems like that by just sprinkling here and there async and await we have rewritten our computation to be fully async.
 
 Everything work as intended and our application is finally using real data.
 Are we ready to release this application?
@@ -233,35 +201,38 @@ layout: fact
 ---
 
 # Wednesday
+Awaiting takes too much time
 
 <!--
 Past Mattia did it again. He messed up.
+-->
+
+---
+layout: showcase-left
+image: /image-01.gif
+---
+
+# Finding the bottleneck
+
+What is taking too much?
+
+- Await means totally sequential
+- Lot of time may be wasted waiting
+- We should issue other work while waiting
+
+<!--
 Turns out that loading data one after the other is really really slow.
 -->
 
 ---
-layout: center
+layout: default
 ---
 
-## Something can be done concurrently
+# What can be parallelized?
 
-```ts {all} {maxHeight:'450px'}
-async function fetchTodoListItem(todo: Todo): Promise<ListItem> {
-  // fetch user data
-  const userResponse = await fetch(
-    "https://jsonplaceholder.typicode.com/users/" + todo.userId
-  );
-  const user: User = await userResponse.json();
-
-  // build list item
-  return {
-    id: todo.id,
-    title: todo.title,
-    username: user.username,
-    completed: todo.completed,
-  };
-}
-```
+Usually can be identified by:
+- does not modify any external sources
+- has no dependency in previous user calls
 
 <!--
 By looking at our code we found out that this piece of computation can be safely executed concurrently, as given the single todo item it can do its job of fetching its related user and create the single item needed by the UI.
@@ -270,22 +241,25 @@ So we can start by extracting the behaviour in a separate function.
 -->
 
 ---
-layout: center
+layout: default
 ---
-## Async means we can wait for stuff concurrently
+# Async in parallel
 
-```ts {all|9-11|12} {maxHeight:'450px'}
+Running computations and wait for all with Promise.all
+
+```ts {all} {maxHeight:'450px'}
+async function fetchTodoListItem(todo: Todo): Promise<ListItem> {
+  const userResponse = await fetch('https://jsonplaceholder.typicode.com/users/' + todo.userId);
+  const user: User = await userResponse.json();
+
+  return { ...user, ...todo };
+}
+
 async function getListItems(): Promise<ListItem[]> {
-  // get all todos
-  const todosResponse = await fetch(
-    "https://jsonplaceholder.typicode.com/todos"
-  );
+  const todosResponse = await fetch('https://jsonplaceholder.typicode.com/todos');
   const todos: Todo[] = await todosResponse.json();
 
-  // starts all fetch concurrently
-  const listItemRequests: Promise<ListItem>[] = todos.map((todo) =>
-    fetchTodoListItem(todo)
-  );
+  const listItemRequests: Promise<ListItem>[] = todos.map((todo) => fetchTodoListItem(todo));
   return await Promise.all(listItemRequests);
 }
 ```
@@ -300,6 +274,7 @@ layout: fact
 ---
 
 # Thursday
+Parallelism is'nt unlimited
 
 <!--
 Well, we arent. After some testing we figure out that issuing too many fetch requests concurrently is'nt a great experience.
@@ -310,9 +285,9 @@ layout: showcase-left
 image: /image-02-async.gif
 ---
 
-## Concurrency
+# Limiting concurrency
 
-Issuing too many fetch requests:
+Issuing too many fetch requests has problems
 
 - Requests may hang too much
 - Lower end devices may crash
@@ -326,72 +301,72 @@ And last but not least it does not make any sense to schedule more requests than
 We are effectively looking to build some sort of rate limiter here, where instead of processing everything, we limit to a fixed amount of jobs to be done concurrenty.
 -->
 ---
-layout: center
+layout: default
 ---
-## Poor man's concurrency limit
+# Poor man's concurrency limit
 
-```ts {all|12|13} {maxHeight:'450px'}
+Just execute N requests, and wait for them to finish before starting next N requests
+
+```ts {all} {maxHeight:'450px'}
 async function getListItems(): Promise<ListItem[]> {
-  // get all todos
-  const todosResponse = await fetch(
-    "https://jsonplaceholder.typicode.com/todos"
-  );
+  let result: ListItem[] = [];
+  
+  const todosResponse = await fetch('https://jsonplaceholder.typicode.com/todos');
   const todos: Todo[] = await todosResponse.json();
 
-  let result: ListItem[] = []
-  const parallelCount = 10
-  for(let i = 0; i < todos.length; i+= parallelCount){
-    // start a batch of requests and wait to finish
-    const requests = todos.slice(i, i + parallelCount).map(fetchTodoListItem)
-    result = result.concat(await Promise.all(requests))
+  const parallelCount = 10;
+  for (let i = 0; i < todos.length; i += parallelCount) {
+    const requests = todos.slice(i, i + parallelCount).map(todo => fetchTodoListItem(todo));
+    result = result.concat(await Promise.all(requests));
   }
 
-  return result
+  return result;
 }
 ```
+
+...but what happens if one request takes too much?
+
 <!--
 A first attempt at solving this issue may be something like this approach.
 Instead of spawning all the promises at once, we create buckets of them, and before proceeding with the next bucket, we wait for all the requests of the current bucket to be completed.
+
+But what happens if one request of the batch takes too much?
 -->
 ---
-layout: center
+layout: default
 ---
-## Work stealing can maximize concurrency
+# Work stealing can maximize concurrency
 
-```ts {all|10-11|13-22|16|17-18|19|25} {maxHeight:'450px'}
+```ts {all} {maxHeight:'450px'}
 async function getListItems(): Promise<ListItem[]> {
-  // get all todos
-  const todosResponse = await fetch(
-    "https://jsonplaceholder.typicode.com/todos"
-  );
+  let result: ListItem[] = [];
+
+  const todosResponse = await fetch('https://jsonplaceholder.typicode.com/todos');
   const todos: Todo[] = await todosResponse.json();
 
-  // prepare the job queue
-  let result: ListItem[] = []
-  const workerCount = 5
-  const workers: Promise<void>[] = []
-  let jobIndex = 0
-  for(let i = 0; i < workerCount; i++){
-    // start a job-stealing worker
-    workers.push((async function(){
-        while(jobIndex < todos.length){
-            const todo = todos[jobIndex]
-            jobIndex++
-            result[jobIndex] = await fetchTodoListItem(todo)
-        }
-    })())
+  let nextJobIndex = 0;
+  async function worker() {
+    while (nextJobIndex < todos.length) {
+      const jobIndex = nextJobIndex++
+      result[jobIndex] = await fetchTodoListItem(todos[jobIndex]);
+    }
   }
 
-  // wait for all workers to finish
-  await Promise.all(workers)
+  const workerCount = 5;
+  const workers: Promise<void>[] = [];
+  for (let i = 0; i < workerCount; i++) {
+    workers.push(worker());
+  }
+  await Promise.all(workers);
 
-  return result
+  return result;
 }
 ```
 <!--
-Beware, this is not the optimal solution to the problem, a better approach would involve implementing a work-stealing approach.
-[#] a fixed amount of workers is defined [#] and then started.
-[#] As long there is work to do, [#] the worker will pick up the first job available from the queue, [#] and then run it waiting for its completion.
+A better approach would involve implementing a work-stealing approach.
+The way it works is that we have a list of jobs to do, we define a worker that steals a job from the queue ensuring no other will attempt to perform it, and continue running until there are no more jobs.
+A fixed amount of workers can be started and the computation is finished when all workers have finished.
+
 With this approach there is a guarantee that the maximum allowed level of concurrency is reached everytime.
 
 Are we now ready to release this application?
@@ -401,18 +376,17 @@ layout: fact
 ---
 
 # Friday
-
+Weird issues
 <!--
 Almost there. There is one weird issue left in our application.
 -->
-
 
 ---
 layout: showcase-left
 image: /image-05-interruption.gif
 ---
 
-## Interruption
+# Interruption
 
 What is it?
 - Outside world may request to interrupt
@@ -429,64 +403,47 @@ Interrupting means being able to ask a computation from outside of it to gracefu
 -->
 
 ---
-layout: center
+layout: default
 ---
 
-## No way to interrupt me!
+# I'll stop when you'll tell me to!
 
-```ts {4-6} {maxHeight:'450px'}
-getListItems().then(setItems)
-```
-<!--
-If we take a step back at were our computation is invoked, we can clearly see that no cleanup function is defined, so once we started fetching, it cannot be interrupted in any way.
--->
+Interruption is signaled from callsite, so we need to start there.
 
----
-layout: center
----
-
-## Nevermind, I'll stop when you'll tell me to!
-
-```ts {4-9} {maxHeight:'450px'}
-// start fetching handling interruption
+```ts {all} {maxHeight:'450px'}
 const controller = new AbortController()
 getListItems(controller.signal).then(setItems);
-// return a way to interrupt the computation
+
 return () => controller.abort()
 ```
 
 <!--
-In order to fix that, first thing to do would be to define in callsite a way to interrupt the long running computation. JavaScript has introduced an AbortController and an AbortSignal class in order to define this type of scenarios.
+In order to implement interruption, first thing to do would be to define in callsite a way to interrupt the long running computation. JavaScript has introduced an AbortController and an AbortSignal class in order to define this type of scenarios.
 
 We can easily construct one of those and hook it up such as the component gets unmounted, we stop any running computation.
 -->
 
 ---
-layout: center
+layout: default
 ---
 
-## Passing it around...
+# Passing it around...
 
-```ts {all|1-4|19} {maxHeight:'450px'}
+That AbortSignal needs to arrive all the way down...
+
+```ts {all} {maxHeight:'450px'}
 async function getListItems(signal: AbortSignal): Promise<ListItem[]> {
-  // create abort signal
-  const controller = new AbortController();
-  signal.addEventListener("abort", () => controller.abort());
+  let result: ListItem[] = [];
 
-  // get all todos
-  const todosResponse = await fetch(
-    "https://jsonplaceholder.typicode.com/todos",
-    { signal: controller.signal }
-  );
+  const controller = new AbortController();
+  signal.addEventListener('abort', () => controller.abort());
+
+  const todosResponse = await fetch('https://jsonplaceholder.typicode.com/todos');
   const todos: Todo[] = await todosResponse.json();
 
-  let result: ListItem[] = [];
   const parallelCount = 10;
   for (let i = 0; i < todos.length; i += parallelCount) {
-    // start a batch of requests and wait to finish
-    const requests = todos
-      .slice(i, i + parallelCount)
-      .map((todo) => fetchTodoListItem(todo, controller.signal));
+    const requests = todos.slice(i, i + parallelCount).map((todo) => fetchTodoListItem(todo, controller.signal));
     result = result.concat(await Promise.all(requests));
   }
 
@@ -497,30 +454,19 @@ async function getListItems(signal: AbortSignal): Promise<ListItem[]> {
 What's unfortunate is that now we have to manually pass around that signal all the way down into our computation up to the fetch request.
 -->
 ---
-layout: center
+layout: default
 ---
 
-## ...and around again...
+# ...and around again...
 
-```ts {all|3|8} {maxHeight:'450px'}
-async function fetchTodoListItem(
-  todo: Todo,
-  signal: AbortSignal
-): Promise<ListItem> {
-  // fetch user data
-  const userResponse = await fetch(
-    "https://jsonplaceholder.typicode.com/users/" + todo.userId,
-    { signal }
-  );
+...up to our request we need to eventually abort.
+
+```ts {all} {maxHeight:'450px'}
+async function fetchTodoListItem(todo: Todo, signal: AbortSignal): Promise<ListItem> {
+  const userResponse = await fetch('https://jsonplaceholder.typicode.com/users/' + todo.userId, { signal });
   const user: User = await userResponse.json();
 
-  // build list item
-  return {
-    id: todo.id,
-    title: todo.title,
-    username: user.username,
-    completed: todo.completed,
-  };
+  return { ...user, ...todo };
 }
 ```
 <!--
@@ -545,6 +491,7 @@ layout: fact
 ---
 
 # Saturday
+"It works on my machine"
 ---
 layout: fact
 ---
@@ -557,34 +504,23 @@ Unfortunately the Backend became unreliable. That meant that occasionaly fetch r
 -->
 
 ---
-layout: center
+layout: default
 ---
 
-## ...just try again...
+# ...just try again...
 
-```ts {all|5|21-25} {maxHeight:'450px'}
-async function fetchTodoListItem(
-  todo: Todo,
-  signal: AbortSignal
-): Promise<ListItem> {
+Some kind of resiliency is required in real world applications; 💩 happens.
+
+```ts {all} {maxHeight:'450px'}
+async function fetchTodoListItem(todo: Todo, signal: AbortSignal): Promise<ListItem> {
   let retryTimeout = 100;
   while (true) {
     try {
-      // fetch user data
-      const userResponse = await fetch(
-        "https://jsonplaceholder.typicode.com/users/" + todo.userId,
-        { signal }
-      );
-      // build list item
+      const userResponse = await fetch('https://jsonplaceholder.typicode.com/users/' + todo.userId, { signal });
       const user: User = await userResponse.json();
-      return {
-        id: todo.id,
-        title: todo.title,
-        username: user.username,
-        completed: todo.completed,
-      };
+
+      return { ...user, ...todo };
     } catch (e) {
-      // wait an exponential timeout up to 10s and retry
       retryTimeout = Math.max(10000, retryTimeout * 2);
       await waitMillis(retryTimeout, signal);
     }
@@ -600,15 +536,16 @@ layout: fact
 ---
 
 # Sunday
-## Such exceptional day
+Such exceptional day
 
 ---
 layout: fact
 ---
 
 # Sunday
-## Such exceptional day
-### By Exceptional I mean with a lot of unhandled exceptions.
+Such exceptional day
+
+By Exceptional I mean with a lot of unhandled exceptions.
 
 
 ---
@@ -633,122 +570,75 @@ Up to now we have discussed mostly what happens on the "happy" path, but unfortu
 -->
 
 ---
-layout: two-cols
+layout: fact
+---
+
+# 😫
+## I felt exhausted
+
+---
+layout: default
 ---
 
 # Before...
 
 ```ts {all} {maxHeight:'450px'}
 function getListItems(): ListItem[] {
-    const result: ListItem[] = []
+  const result: ListItem[] = [];
 
-    const todos: Todo[] = U.TODOS
-
-    for(let i = 0; i < todos.length; i++){
-        const todo = todos[i]
-        const user: User = U.USERS.find(e => e.id === todo.userId)!
-        result.push({
-            id: todo.id,
-            title: todo.title,
-            username: user.username,
-            completed: todo.completed
-        })
-    }
-    return result
-}
-
-export default function TodoList(){
-    const items: ListItem[] = getListItems()
-
-    return <U.TodoListContainer>
-        {items.map(listItem => <U.TodoListEntry key={listItem.id} {...listItem} />)}
-    </U.TodoListContainer>
+  for (let todo of U.TODOS) {
+    const user: User = U.USERS.find((e) => e.id === todo.userId)!;
+    result.push({ ...user, ...todo });
+  }
+  return result;
 }
 ```
 
-::right::
+---
+layout: default
+---
 
 # ...After
 
-```ts {all|1-27|29-52|55-60|62-79} {maxHeight:'450px'}
-async function fetchTodoListItem(
-  todo: Todo,
-  signal: AbortSignal
-): Promise<ListItem> {
-  let retryTimeout = 100;
-  while (true) {
-    try {
-      // fetch user data
-      const userResponse = await fetch(
-        "https://jsonplaceholder.typicode.com/users/" + todo.userId,
-        { signal }
-      );
-      // build list item
-      const user: User = await userResponse.json();
-      return {
-        id: todo.id,
-        title: todo.title,
-        username: user.username,
-        completed: todo.completed,
-      };
-    } catch (e) {
-      // wait an exponential timeout up to 10s and retry
-      retryTimeout = Math.max(10000, retryTimeout * 2);
-      await waitMillis(retryTimeout, signal);
-    }
-  }
-}
-
+```ts {1-17|19-32|34-39} {maxHeight:'450px'}
 async function getListItems(signal: AbortSignal): Promise<ListItem[]> {
-  // create abort signal
-  const controller = new AbortController();
-  signal.addEventListener("abort", () => controller.abort());
+  let result: ListItem[] = [];
 
-  // get all todos
-  const todosResponse = await fetch(
-    "https://jsonplaceholder.typicode.com/todos",
-    { signal: controller.signal }
-  );
+  const controller = new AbortController();
+  signal.addEventListener('abort', () => controller.abort());
+
+  const todosResponse = await fetch('https://jsonplaceholder.typicode.com/todos');
   const todos: Todo[] = await todosResponse.json();
 
-  let result: ListItem[] = [];
   const parallelCount = 10;
   for (let i = 0; i < todos.length; i += parallelCount) {
-    // start a batch of requests and wait to finish
-    const requests = todos
-      .slice(i, i + parallelCount)
-      .map((todo) => fetchTodoListItem(todo, controller.signal));
+    const requests = todos.slice(i, i + parallelCount).map((todo) => fetchTodoListItem(todo, controller.signal));
     result = result.concat(await Promise.all(requests));
   }
 
   return result;
 }
 
-// waits for millis, aborting if signaled.
+async function fetchTodoListItem(todo: Todo, signal: AbortSignal): Promise<ListItem> {
+  let retryTimeout = 100;
+  while (true) {
+    try {
+      const userResponse = await fetch('https://jsonplaceholder.typicode.com/users/' + todo.userId, { signal });
+      const user: User = await userResponse.json();
+
+      return { ...user, ...todo };
+    } catch (e) {
+      retryTimeout = Math.max(10000, retryTimeout * 2);
+      await waitMillis(retryTimeout, signal);
+    }
+  }
+}
+
 function waitMillis(millis: number, signal: AbortSignal) {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => resolve(true), millis);
-    signal.addEventListener("abort", () => clearTimeout(timeout));
+    signal.addEventListener('abort', () => clearTimeout(timeout));
   });
-}
-
-export default function TodoList() {
-  const [items, setItems] = React.useState<ListItem[]>([]);
-
-  React.useEffect(() => {
-    // start fetching handling interruption
-    const controller = new AbortController();
-    getListItems(controller.signal).then(setItems);
-    return () => controller.abort();
-  }, []);
-
-  return (
-    <U.TodoListContainer>
-      {items.map((listItem) => (
-        <U.TodoListEntry key={listItem.id} {...listItem} />
-      ))}
-    </U.TodoListContainer>
-  );
 }
 ```
 <!--
@@ -756,20 +646,18 @@ At the end of the week I felt very disappointed.
 I felt like I spent more time fighting with the platform, than building and implementing Business critical application logic.
 -->
 ---
-layout: fact
+layout: default
 ---
 
-# 😫
-## Can we do better?
----
-layout: fact
----
+# Promise is'nt going to solve anything
 
-## Promise is'nt going to solve anything
-
+- no concurrency limit implementation
+- no built in interruption
+- no built in retry logic
+- no typed errors in _Promise< A >_
 
 ---
-layout: center
+layout: default
 ---
 
 # Not just on frontend...

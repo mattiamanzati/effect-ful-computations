@@ -1,29 +1,16 @@
-import { ListItem, Todo, User, UserId } from "./types";
-import React from "react";
-import * as U from "./utils";
+import { ListItem, Todo, User, UserId } from './types';
+import React from 'react';
+import * as U from './utils';
 
-async function fetchTodoListItem(
-  todo: Todo,
-  signal: AbortSignal
-): Promise<ListItem> {
+async function fetchTodoListItem(todo: Todo, signal: AbortSignal): Promise<ListItem> {
   let retryTimeout = 100;
   while (true) {
     try {
-      // fetch user data
-      const userResponse = await fetch(
-        "https://jsonplaceholder.typicode.com/users/" + todo.userId,
-        { signal }
-      );
-      // build list item
+      const userResponse = await fetch('https://jsonplaceholder.typicode.com/users/' + todo.userId, { signal });
       const user: User = await userResponse.json();
-      return {
-        id: todo.id,
-        title: todo.title,
-        username: user.username,
-        completed: todo.completed,
-      };
+
+      return { ...user, ...todo };
     } catch (e) {
-      // wait an exponential timeout up to 10s and retry
       retryTimeout = Math.max(10000, retryTimeout * 2);
       await waitMillis(retryTimeout, signal);
     }
@@ -31,35 +18,27 @@ async function fetchTodoListItem(
 }
 
 async function getListItems(signal: AbortSignal): Promise<ListItem[]> {
-  // create abort signal
-  const controller = new AbortController();
-  signal.addEventListener("abort", () => controller.abort());
+  let result: ListItem[] = [];
 
-  // get all todos
-  const todosResponse = await fetch(
-    "https://jsonplaceholder.typicode.com/todos",
-    { signal: controller.signal }
-  );
+  const controller = new AbortController();
+  signal.addEventListener('abort', () => controller.abort());
+
+  const todosResponse = await fetch('https://jsonplaceholder.typicode.com/todos');
   const todos: Todo[] = await todosResponse.json();
 
-  let result: ListItem[] = [];
   const parallelCount = 10;
   for (let i = 0; i < todos.length; i += parallelCount) {
-    // start a batch of requests and wait to finish
-    const requests = todos
-      .slice(i, i + parallelCount)
-      .map((todo) => fetchTodoListItem(todo, controller.signal));
+    const requests = todos.slice(i, i + parallelCount).map((todo) => fetchTodoListItem(todo, controller.signal));
     result = result.concat(await Promise.all(requests));
   }
 
   return result;
 }
 
-// waits for millis, aborting if signaled.
 function waitMillis(millis: number, signal: AbortSignal) {
   return new Promise((resolve) => {
     const timeout = setTimeout(() => resolve(true), millis);
-    signal.addEventListener("abort", () => clearTimeout(timeout));
+    signal.addEventListener('abort', () => clearTimeout(timeout));
   });
 }
 
