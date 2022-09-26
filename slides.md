@@ -638,16 +638,13 @@ function waitMillis(millis: number, signal: AbortSignal) {
 At the end of the week I felt very disappointed.
 I felt like I spent more time fighting with the platform, than building and implementing Business critical application logic.
 -->
+
 ---
-layout: default
+layout: fact
 ---
 
-# Promise is'nt going to solve anything
-
-- no concurrency limit implementation
-- no built in interruption
-- no built in retry logic
-- no typed errors in _Promise< A >_
+Current state of the art?
+# DISASTER
 
 ---
 layout: default
@@ -665,6 +662,45 @@ Looking for a way to define a computation that:
 - May mix sync and async steps<br/>
   <small>read from storage or fetch a resource / compute some values or store into database </small>
 
+<!--
+And those problems are not just a frontend thing related to data fetching, they happen in the backend too.
+Here's some examples...
+-->
+
+---
+layout: default
+---
+
+# Promise is'nt going to solve anything
+
+- no control over execution, it already happened
+- no concurrency control
+- no built in interruption
+- no built in retry logic
+- no typed errors in _Promise< A >_
+
+... in short, it does'nt solve any real problem.
+
+---
+layout: center
+---
+
+# How can we solve those problems?
+We need a better computation primitive
+
+
+---
+layout: center
+---
+
+# Fibers solved lot of those problems!
+
+- May be interrupted before finishing<br/>
+  <small>work can be discarded if obsolete</small>
+- May be executed concurrently<br/>
+  <small>prepare multiple version of the same UI</small>
+- May fail sometimes, and sometimes recover<br/>
+  <small>error boundaries</small>
 
 ---
 layout: center
@@ -674,32 +710,12 @@ layout: center
 Structured concurrency library backed by a powerful Fiber-based runtime
 
 <!--
-And that's what Effect tries to solve.
-Effect is a structured concurrency library that is optimized for ease of use and that is backed by a powerful runtime "such as the one you're may be familiar with for React fibers". Effect is based on an existing Scala library called ZIO and models lot of its data structure around it.
+Effect is a structured concurrency library that is optimized for ease of use and that is backed by a powerful runtime "such as the one you're may be familiar with for React fibers". 
 
-Effect APIs are pipeable and based on good functiona programming priciples. 
-
-Instead of trying to teach you what a Monad is (and I never fully understood it), effect takes the good part of functional programming like composability, purity and immutability to create an experience focused on DX and productivity.
-
-When using libraries like RxJS you may already have used "pipe" to compose a set of transformation, and that kind of style of APIs is the one you'll find while using effect.
-
+Effect aims to be a better computation primitive than promise, and solve lot of real world problems such as the ones we have seen before.
 -->
 
 
----
-layout: center
----
-
-# ...React Fiber does that!
-
-- May be executed concurrently<br/>
-  <small>prepare multiple version of the same UI</small>
-- May be interrupted before finishing<br/>
-  <small>work can be discarded if obsolete</small>
-- May fail sometimes, and sometimes recover<br/>
-  <small>error boundaries</small>
-- May mix sync and async steps<br/>
-  <small>classic components or suspend</small>
 ---
 layout: center
 ---
@@ -710,42 +726,53 @@ _R_ equirements, _E_ rrors, ..._A_ success!
 The effect datatype is the core of the whole package and has 3 type parameters. R which stands for Requirements, E that stands for Error and A for... A SUCCESS!
 This allows to have all the information of how a computation may work by just looking at an effect type parameters. Every API is designed to try to leverage as much as possible automatic inference of those type parameters.
 -->
----
-layout: center
----
 
-```ts {all|13-17} {maxHeight:'450px'}
+
+
+---
+layout: showcase-left
+image: /image-lazy.png
+---
+# Solving problem #1
+Instead of Promising a value, Effect is lazy and can be executed as many times as you want
+
+```ts {all} {maxHeight:'450px'}
 import * as Effect from "@effect/core/io/Effect"
 import * as Exit from "@effect/core/io/Exit"
 
-// define the program
+// describes the computation
 const program = Effect.sync(() => {
     console.log("Hello Effect!")
     return 42
 })
-// ^- Effect<never, never, number>
 
-// start execution and return a function to interrupt execution
-const interruptor = Effect.unsafeRunWith(program, result => {
-    if(Exit.isSuccess(result)){
-        console.log("Computation succeeded with ", result.value)
-    }else{
-        console.log("Computation failed with", result.cause)
-    }
-})
+// execute the description of the computation
+for(let i = 0; i < 10; i++){
+  Effect.unsafeRunWith(program, result => {
+      if(Exit.isSuccess(result)){
+          console.log("Computation " + i + 
+            " succeeded with ", result.value)
+      }else{
+          console.log("Computation " + i + 
+            " failed with", result.cause)
+      }
+  })
+}
 ```
 <!--
-With effect instead of building programs by running computations, we instead have a lazy structure that describes the behaviour of a computation. That description is then traversed and interpreted by a Runtime that allows to run our computation.
+One of the biggest problem with Promise is that is'nt lazy.
+That means that we have no control over execution, with effect instead of building programs by running computations, we instead have a lazy structure that describes the behaviour of a computation. That description is then traversed and interpreted by a Runtime that allows to run our computation.
 This means that things like retry logic can be easily implemented by just re-executing the computation definition as many times as we like.
 
 As we can see in the last line of code, executing an Effect into the runtime can be done by calling unsafeRun and we can provide a callback that will recive the effect "exit".
 -->
 
+
 ---
-layout: center
+layout: showcase-left
 ---
 
-## Exit<E, A>
+# Exit<E, A>
 
 Running an effect, may result in an exit:
 
@@ -763,7 +790,6 @@ If the computation succeeded, the exit will be a success and value will contain 
 If the computation failed, the exit will contain the "cause" of the failure, and that data structure may contain one or more reason of failure, those can be a failure of type E, or an unexpected error, or an interruption signal.
 -->
 
-
 ---
 layout: fact
 ---
@@ -778,58 +804,47 @@ layout: fact
 A synchronous sample
 
 ---
-layout: center
+layout: default
 ---
 
-## Our first Effect
+# Sync Effect
+
+Simple sync computations to get things done quickly:
 
 ```ts {all} {maxHeight:'450px'}
 import * as Effect from "@effect/core/io/Effect";
 
 const getTodos = Effect.sync(() => U.TODOS);
 // ^- T.Effect<never, never, Todo[]>
-```
-
-<!--
-Lets start to build our application by the tinest block, as we were building with legos.
-
-Let's implement a basic sync function to retrive the entire list of todos.
-As we did before, we'll start using some sample data and just read that.
-We can use the "sync" method from the effect module to convert a regular sync computation into an effect.
-If we inspect the result type, we'll see an Effect wich has no requirements, no possible errors, and returns a list of TODOs.
-
-Since effect is just a description of a computation, if there are no parameters I can just define the effect as a constant, and run it as many times as I like by just calling unsafeRun multiple times.
--->
-
-
----
-layout: center
----
-
-## Our first Effect
-
-```ts {all} {maxHeight:'450px'}
-import * as Effect from "@effect/core/io/Effect";
 
 const getUser = (userId: UserId) =>
   Effect.sync(() => U.USERS.find((e) => e.id === userId));
 // ^- (userId: UserId) => T.Effect<never, never, User | undefined>
 ```
+
 <!--
+Lets start as the previous week by building the tinest block, as we were building with legos.
+
+Let's implement a basic sync function to retrive the entire list of todos.
+We can use the "sync" method from the effect module to convert a regular sync computation into an effect.
+
 Now we can also build our computation that given an UserId, gets the user with that id.
+
 We do the same as before, but defined as a function as we take in the userid and returns an effect that when executed by the runtime, resolves the User.
 By hovering our effect signature, we can see clearly that the return type also involves an undefined.
 This may be unwanted, usually as we said before in the A parameter there's the expected type of the result, and undefined seems not a value for a happy path of our computation.
 -->
 
-
 ---
-layout: center
+layout: showcase-left
+image: /image-typed-failure.png
 ---
 
-## Using the error channel
+# Solving problem #2
 
-```ts {all|3-6|4|5|11|12|15} {maxHeight:'450px'}
+Using explicit error types gives better information about the computation
+
+```ts {all} {maxHeight:'450px'}
 import * as Effect from "@effect/core/io/Effect";
 
 class UserNotFound {
@@ -839,31 +854,34 @@ class UserNotFound {
 
 const getUser = (userId: UserId) =>
   pipe(
-    Effect.sync(() => U.USERS.find((e) => e.id === userId)),
+    Effect.sync(() => 
+      U.USERS.find((e) => e.id === userId)),
     Effect.flatMap((user) =>
-      user ? Effect.succeed(user) : Effect.fail(new UserNotFound(userId))
+      user ? 
+        Effect.succeed(user) : 
+        Effect.fail(new UserNotFound(userId))
     )
   );
-// ^- (userId: UserId) => T.Effect<never, UserNotFound, User>
+// ^- (userId: UserId) => 
+//        T.Effect<never, UserNotFound, User>
 ```
 
 <!--
 What we can do instead, is leverage the error channel and make so our computations goes into a Failure if an user does not exists.
 
-[#] First we define a class that represents the error type, [#] we use a tag field to give a unique identifier to the error, and then we update our computation.
+To do that, we need to chain our effects, and look up at the result of the previous one to continue.
+Chaining Effects can be done by using the "flatMap" function, which takes a function that has as parameter the result of the previous effects, and returns a new effect to be executed.
 
-By using flatMap we chain together Effects, allowing to return a new effect based on the result of the previous one, if it succeeded.
+Here we then take a look at the value, and if its an user we continue by succeding, or else we fail with a UserNotFound failure.
 
-[#] Here we then take a look at the value, and if its an user we continue by succeding, or else we fail with a UserNotFound failure.
-
-By hovering the type definition of our new computation, we can clearly see how the error channel now contains our UserNotFound failure.
+By hovering the type definition of our new computation, we can now clearly see how the error channel now contains our UserNotFound failure and better describes the computation than the Promise alternative.
 -->
 
 ---
-layout: center
+layout: default
 ---
 
-## Transforming the output
+# Transforming the output
 
 ```ts {all} {maxHeight:'450px'}
 import * as Effect from "@effect/core/io/Effect";
@@ -871,12 +889,7 @@ import * as Effect from "@effect/core/io/Effect";
 const fetchListItem = (todo: Todo) =>
   pipe(
     getUser(todo.userId),
-    Effect.map((user) => ({
-      id: todo.id,
-      username: user.username,
-      title: todo.title,
-      completed: todo.completed,
-    }))
+    Effect.map((user) => ({ ...user, ...todo }))
   );
 // ^- (todo: Todo) => T.Effect<never, UserNotFound, ListItem>
 ```
@@ -889,12 +902,11 @@ Here we just call getUser to get an Effect that fetches the user, and then if ev
 What's really neat here is how Effect is taking fully advantage of the type system inference and carrying on the error type from the getUser function.
 -->
 
-
 ---
-layout: center
+layout: default
 ---
 
-## Putting it together
+# Putting it together
 
 ```ts {all} {maxHeight:'450px'}
 const getListItems = pipe(
@@ -1285,3 +1297,75 @@ layout: fact
 ---
 
 # There's more!
+
+
+
+
+---
+layout: default
+---
+
+# Your first Effect
+
+Effects can be built from a pure value in the same way you do with Promise
+
+```ts
+const sample1 = Promise.resolve("value")
+// ^- Promise<string>
+
+const sample2 = Effect.succeed("value")
+// ^- Effect<never, never, string>
+```
+
+or in case of a failure
+
+```ts
+const failure1 = Promise.reject(new UserNotFoundError())
+// ^- Promise<never>
+
+const failure2 = Effect.fail(new UserNotFoundError())
+// ^- Effect<never, UserNotFoundError, never>
+```
+
+<!--
+How can we create an instance of an effect?
+There are several ways to do that, 
+the simplest way would be to create an effect from a value or a failure, in the same way we do it with promises.
+
+TypeScript users will also see how the type of an Effect better describes the computation, by giving hints of all the possible failures our computation will result into.
+-->
+
+---
+layout: default
+---
+
+# Async Effect
+
+Effects can be also asynchronous
+
+```ts
+const async1 = new Promise<string>((resolve, reject) => {
+    setTimeout(() => resolve("value"), 1000)
+    // ... or ...
+    reject(new UserNotFoundError())
+})
+// ^- Promise<string>
+
+const async2 = Effect.async<never, UserNotFoundError, string>(callback => {
+    setTimeout(() => callback(Effect.succeed("value")), 1000)
+    // ... or ...
+    callback(Effect.fail(new UserNotFoundError()))
+})
+// ^- Effect<never, UserNotFoundError, string>
+
+const async3 = Effect.tryPromise(() => fetch("http://api.myhost.it"))
+// ^- Effect<never, unknown, Response>
+```
+
+<!--
+We can also build asynchronous effects, in the same way we do with promises.
+
+The same benefits for typescript users apply here, by just looking at the type we get full informations about the computation.
+
+Obviuously the platform has lot of APIs that work with promises, we can transform a promise into an asyncronous effect anytime by just using "tryPromise".
+-->
