@@ -43,7 +43,7 @@ A deep dive in the world of computations
 
 <!--
 Today we're gonna dive together in the world of computations.
-We're gonna start by acknoledge what's the state of the art of building computations with JavaScript, we'll see what problems we may encounter, and finally we'll find a better way to define computations.
+We're gonna start by acknoledge what's the state of the art of building computations with JavaScript, we'll see some problems you may have in your application and don't know about, and finally we'll see if we are satisfied and how to eventually improve the definition of computations.
 -->
 
 ---
@@ -73,13 +73,13 @@ export interface Todo {
 ```
 
 <!--
-Before embarking our journey, let me introduce you our companion, the application we'll be building.
+What a better way to acknoledge the situation then building a real application?
 
-Guess what? It's a TODO Management application. 
-Developers somehow really like to build them and everyone likes to publish on the internet tutorials about them.
+Let's build together a TODO management application.
 
-Our application domain objects will be something along this lines: well have a set of Users  and a set of TODOs that should be assigned to an user, have a title and eventually marked as completed.
+Our application domain objects will be something along this lines: well have a set of Users  and a set of TODOs that should be assigned to an user, have a title and eventually marked as completed
 -->
+
 ---
 layout: fact
 ---
@@ -205,6 +205,7 @@ Awaiting takes too much time
 
 <!--
 Past Mattia did it again. He messed up.
+Turns out that loading data is really really slow.
 -->
 
 ---
@@ -218,26 +219,16 @@ What is taking too much?
 
 - Await means totally sequential
 - Lot of time may be wasted waiting
-- We should issue other work while waiting
 
-<!--
-Turns out that loading data one after the other is really really slow.
--->
-
----
-layout: default
----
-
-# What can be parallelized?
-
-Usually can be identified by:
+Can we do something else while waiting?
+Usually anything that:
 - does not modify any external sources
-- has no dependency in previous user calls
+- has no dependency in result of current computation
 
 <!--
-By looking at our code we found out that this piece of computation can be safely executed concurrently, as given the single todo item it can do its job of fetching its related user and create the single item needed by the UI.
+After a short session of debugging, we find out that performing one request after the other results in too much time being wasted.
 
-So we can start by extracting the behaviour in a separate function.
+Can we do something else instead of waisting time? Sure, we can easily do anything that does not requires the result of the current computation that is running.
 -->
 
 ---
@@ -264,7 +255,9 @@ async function getListItems(): Promise<ListItem[]> {
 }
 ```
 <!--
-Our main computation will now change and instead of running requests and wait for its result one by one, we can just issue all the work to be done concurrently.
+By looking at our code we found out that given the single todo item we can fetch its related user and create the single item needed by the UI in parallel.
+
+Our main computation can now change and instead of running a request and wait for its result one by one, we can just issue all the work to be done concurrently.
 Finally we wait for all the results and return the data to the UI.
 
 Are we ready to release this application?
@@ -677,23 +670,8 @@ Looking for a way to define a computation that:
 layout: center
 ---
 
-# ...React Fiber does that!
-
-- May be executed concurrently<br/>
-  <small>prepare multiple version of the same UI</small>
-- May be interrupted before finishing<br/>
-  <small>work can be discarded if obsolete</small>
-- May fail sometimes, and sometimes recover<br/>
-  <small>error boundaries</small>
-- May mix sync and async steps<br/>
-  <small>classic components or suspend</small>
-
----
-layout: center
----
-
 # Effect
-A data structure to define computations in a Fiber-based runtime
+Structured concurrency library backed by a powerful Fiber-based runtime
 
 <!--
 And that's what Effect tries to solve.
@@ -706,6 +684,22 @@ Instead of trying to teach you what a Monad is (and I never fully understood it)
 When using libraries like RxJS you may already have used "pipe" to compose a set of transformation, and that kind of style of APIs is the one you'll find while using effect.
 
 -->
+
+
+---
+layout: center
+---
+
+# ...React Fiber does that!
+
+- May be executed concurrently<br/>
+  <small>prepare multiple version of the same UI</small>
+- May be interrupted before finishing<br/>
+  <small>work can be discarded if obsolete</small>
+- May fail sometimes, and sometimes recover<br/>
+  <small>error boundaries</small>
+- May mix sync and async steps<br/>
+  <small>classic components or suspend</small>
 ---
 layout: center
 ---
