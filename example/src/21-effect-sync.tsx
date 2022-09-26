@@ -7,7 +7,7 @@ import * as Chunk from "@tsplus/stdlib/collections/Chunk";
 import { pipe } from "@tsplus/stdlib/data/Function";
 
 const getTodos = Effect.sync(() => U.TODOS);
-// ^- T.Effect<never, never, Todo[]>
+// ^? T.Effect<never, never, Todo[]>
 
 class UserNotFound {
   readonly _tag = "UserNotFound";
@@ -21,7 +21,7 @@ const getUser = (userId: UserId) =>
       user ? Effect.succeed(user) : Effect.fail(new UserNotFound(userId))
     )
   );
-// ^- (userId: UserId) => T.Effect<never, UserNotFound, User>
+// ^? (userId: UserId) => T.Effect<never, UserNotFound, User>
 
 const fetchListItem = (todo: Todo) =>
   pipe(
@@ -33,7 +33,7 @@ const fetchListItem = (todo: Todo) =>
       completed: todo.completed,
     }))
   );
-// ^- (todo: Todo) => T.Effect<never, UserNotFound, ListItem>
+// ^? (todo: Todo) => T.Effect<never, UserNotFound, ListItem>
 
 const getListItems = pipe(
   getTodos,
@@ -42,7 +42,7 @@ const getListItems = pipe(
   ),
   Effect.map((e) => Array.from(Chunk.toCollection(e)))
 );
-// ^- T.Effect<never, UserNotFound, ListItem[]>
+// ^? T.Effect<never, UserNotFound, ListItem[]>
 
 export default function TodoList() {
   const [items, setItems] = React.useState<ListItem[]>([]);

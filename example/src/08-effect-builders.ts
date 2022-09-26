@@ -6,7 +6,7 @@ const program = Effect.sync(() => {
     console.log("Hello Effect!")
     return 42
 })
-// ^- Effect<never, never, number>
+// ^? Effect<never, never, number>
 
 // run the program
 Effect.unsafeRunWith(program, result => {

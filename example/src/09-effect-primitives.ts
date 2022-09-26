@@ -2,18 +2,18 @@ import * as Effect from '@effect/core/io/Effect';
 import * as Exit from '@effect/core/io/Exit';
 
 const a = Promise.resolve('value');
-// ^-  Promise<string>
+// ^?  Promise<string>
 
 const b = Effect.succeed('value');
-// ^- Effect<never, never, string>
+// ^? Effect<never, never, string>
 
 class UserNotFoundError {}
 
 const failure1 = Promise.reject(new UserNotFoundError());
-// ^-  Promise<never>
+// ^?  Promise<never>
 
 const failure2 = Effect.fail(new UserNotFoundError());
-// ^- Effect<never, UserNotFoundError, never>
+// ^? Effect<never, UserNotFoundError, never>
 
 // ASYNC
 
@@ -22,17 +22,17 @@ const async1 = new Promise<string>((resolve, reject) => {
   // ... or ...
   reject(new UserNotFoundError());
 });
-// ^- Promise<string>
+// ^? Promise<string>
 
 const async2 = Effect.async<never, UserNotFoundError, string>((callback) => {
   setTimeout(() => callback(Effect.succeed('value')));
   // ... or ...
   callback(Effect.fail(new UserNotFoundError()));
 });
-// ^- Effect<never, UserNotFoundError, string>
+// ^? Effect<never, UserNotFoundError, string>
 
 const async3 = Effect.tryPromise(() => fetch('http://api.myhost.it'));
-// ^- Effect<never, unknown, Response>
+// ^? Effect<never, unknown, Response>
 
 /*
 const program = Effect.sync(() => {

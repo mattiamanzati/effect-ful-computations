@@ -32,7 +32,7 @@ export const request = (input: RequestInfo, init?: RequestInit | undefined) =>
       })
     );
   });
-// ^- (input: RequestInfo, init?: RequestInit) => Effect<never, FetchError, Response>
+// ^? (input: RequestInfo, init?: RequestInit) => Effect<never, FetchError, Response>
 
 class JsonBodyError {
   readonly _tag = "JsonBodyError";
@@ -59,7 +59,7 @@ const getTodos = pipe(
   ),
   Effect.orDie
 );
-// ^- Effect<never, FetchError | JsonBodyError, Todo[]>
+// ^? Effect<never, FetchError | JsonBodyError, Todo[]>
 
 class UserNotFound {
   readonly _tag = "UserNotFound";
@@ -72,7 +72,7 @@ const getUser = (userId: UserId) =>
     Effect.flatMap((response) => decodeJson<User>(response)),
     Effect.orDie
   );
-// ^- (userId: UserId) => T.Effect<ApiBase, UserNotFound, User>
+// ^? (userId: UserId) => T.Effect<ApiBase, UserNotFound, User>
 
 interface UserService {
   getUser: (userId: UserId) => Effect.Effect<never, UserNotFound, User>;
@@ -88,7 +88,7 @@ const getUserName = (userId: UserId) =>
     ),
     Effect.orDie
   );
-// ^- Effect<UserService, never, string>
+// ^? Effect<UserService, never, string>
 
 const fetchListItem = (todo: Todo) =>
   pipe(
@@ -100,7 +100,7 @@ const fetchListItem = (todo: Todo) =>
       completed: todo.completed,
     }))
   );
-// ^- (todo: Todo) => T.Effect<ApiBase, never, ListItem>
+// ^? (todo: Todo) => T.Effect<ApiBase, never, ListItem>
 
 interface TodoService {
   getTodos: Effect.Effect<never, never, Todo[]>;
@@ -115,14 +115,14 @@ const getListItems = pipe(
   Effect.withParallelism(10),
   Effect.map((e) => Array.from(Chunk.toCollection(e)))
 );
-// ^- T.Effect<UserService | TodoService, never, ListItem[]>
+// ^? T.Effect<UserService | TodoService, never, ListItem[]>
 
 const liveGetListItems = pipe(
     getListItems,
     Effect.provideService(UserService, { getUser }),
     Effect.provideService(TodoService, { getTodos })
 )
-// ^- T.Effect<never, never, ListItem[]>
+// ^? T.Effect<never, never, ListItem[]>
 
 export default function TodoList() {
   const [items, setItems] = React.useState<ListItem[]>([]);

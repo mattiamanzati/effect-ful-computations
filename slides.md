@@ -674,12 +674,12 @@ layout: default
 # Promise is'nt going to solve anything
 
 - no control over execution, it already happened
-- no concurrency control
-- no built in interruption
 - no built in retry logic
+- no built in interruption
+- no concurrency control
 - no typed errors in _Promise< A >_
 
-... in short, it does'nt solve any real problem.
+... in short, it does'nt solve any real problem. 
 
 ---
 layout: center
@@ -693,7 +693,7 @@ We need a better computation primitive
 layout: center
 ---
 
-# Fibers solved lot of those problems!
+# Fibers solved lot of those problems in React!
 
 - May be interrupted before finishing<br/>
   <small>work can be discarded if obsolete</small>
@@ -726,8 +726,6 @@ _R_ equirements, _E_ rrors, ..._A_ success!
 The effect datatype is the core of the whole package and has 3 type parameters. R which stands for Requirements, E that stands for Error and A for... A SUCCESS!
 This allows to have all the information of how a computation may work by just looking at an effect type parameters. Every API is designed to try to leverage as much as possible automatic inference of those type parameters.
 -->
-
-
 
 ---
 layout: showcase-left
@@ -815,11 +813,11 @@ Simple sync computations to get things done quickly:
 import * as Effect from "@effect/core/io/Effect";
 
 const getTodos = Effect.sync(() => U.TODOS);
-// ^- T.Effect<never, never, Todo[]>
+// ^? T.Effect<never, never, Todo[]>
 
 const getUser = (userId: UserId) =>
   Effect.sync(() => U.USERS.find((e) => e.id === userId));
-// ^- (userId: UserId) => T.Effect<never, never, User | undefined>
+// ^? (userId: UserId) => T.Effect<never, never, User | undefined>
 ```
 
 <!--
@@ -862,7 +860,7 @@ const getUser = (userId: UserId) =>
         Effect.fail(new UserNotFound(userId))
     )
   );
-// ^- (userId: UserId) => 
+// ^? (userId: UserId) => 
 //        T.Effect<never, UserNotFound, User>
 ```
 
@@ -881,7 +879,9 @@ By hovering the type definition of our new computation, we can now clearly see h
 layout: default
 ---
 
-# Transforming the output
+# Inference helps a lot!
+
+Errors simply gets borrowed along the computation, as they should
 
 ```ts {all} {maxHeight:'450px'}
 import * as Effect from "@effect/core/io/Effect";
@@ -891,7 +891,15 @@ const fetchListItem = (todo: Todo) =>
     getUser(todo.userId),
     Effect.map((user) => ({ ...user, ...todo }))
   );
-// ^- (todo: Todo) => T.Effect<never, UserNotFound, ListItem>
+// ^? (todo: Todo) => T.Effect<never, UserNotFound, ListItem>
+
+const getListItems = pipe(
+  getTodos,
+  Effect.flatMap((todos) =>
+    Effect.forEach(todos, (todo) => fetchListItem(todo))
+  )
+);
+// ^? T.Effect<never, UserNotFound, ListItem[]>
 ```
 
 <!--
@@ -900,28 +908,6 @@ Going on with our little lego pieces, we stumble upon our fetchListItem function
 Here we just call getUser to get an Effect that fetches the user, and then if everything is fine and we are on the happy path, we transform the output of the user, and produce our data object.
 
 What's really neat here is how Effect is taking fully advantage of the type system inference and carrying on the error type from the getUser function.
--->
-
----
-layout: default
----
-
-# Putting it together
-
-```ts {all} {maxHeight:'450px'}
-const getListItems = pipe(
-  getTodos,
-  Effect.flatMap((todos) =>
-    Effect.forEach(todos, (todo) => fetchListItem(todo))
-  )
-);
-// ^- T.Effect<never, UserNotFound, ListItem[]>
-```
-
-<!--
-Finally its time to just put together our lego pieces.
-[#] We get all the todos, and once all todos are retrived, 
-[#] we loop through them, and for each one of them we build our list item.
 
 That's it, we've built our computation in sync using effect.
 -->
@@ -934,10 +920,12 @@ layout: fact
 Going async and fetching data.
 
 ---
-layout: center
+layout: default
 ---
 
-## A simple fetch request
+# A simple fetch request
+
+Naive APIs may rely on Promise, but no worries, you can transform them into an Effect
 
 ```ts {all} {maxHeight:'450px'}
 class FetchError {
@@ -950,7 +938,7 @@ export const request = (input: RequestInfo, init?: RequestInit | undefined) =>
     () => fetch(input, init),
     (error: unknown) => new FetchError(error)
   )
-// ^- (input: RequestInfo, init?: RequestInit) => Effect<never, FetchError, Response>
+// ^? (input: RequestInfo, init?: RequestInit) => Effect<never, FetchError, Response>
 ```
 
 <!--
@@ -964,36 +952,54 @@ As we've discussed before, Promises are'nt great at typing errors. That's why th
 
 
 ---
-layout: center
+layout: default
 ---
 
-## Raising failures
+# Composing Effects
+
+More stuff, means more errors
 
 ```ts {all} {maxHeight:'450px'}
-class JsonBodyError {
-  readonly _tag = "JsonBodyError";
-  constructor(readonly error: unknown) {}
-}
 
-const decodeJson = (response: Response) =>
-  Effect.tryCatchPromise(
-    () => response.json(),
-    (error: unknown) => new JsonBodyError(error)
-  );
+declare const decodeJson: (response: Response) => Effect<never, JsonBodyError, any>
+declare const parseTodos: (value: any) => Effect<never, InvalidTodoObjectError, Todo[]>
 
 const getTodos = pipe(
     request("https://jsonplaceholder.typicode.com/todos"),
-    Effect.flatMap(response => decodeJson(response))
+    Effect.flatMap(response => decodeJson(response)),
+    Effect.flatMap(data => parseTodos(data)),
 );
-// ^- Effect<never, FetchError | JsonBodyError, any>
+// ^? Effect<never, FetchError | JsonBodyError | InvalidTodoObjectError, Todo[]>
 ```
 
 <!--
-Here we composed our previous request computation, with a new computation that given the response try to parse the JSON, and that may fail too.
+And for sure fetching data introduces a lot of errors, but thanks to composition, errors just stack on the error channel.
+-->
 
-Again, the beautiful thing about the Effect API, is that by looking at the type signature you can get a lot of informations. Here we can clearly see that composing Effects also composed the possible errors we can get while running those.
+---
+layout: default
+---
 
-Here you can also see how the output is now any, and well, that's true, we also need to parse the JSON and ensure it satisfies the Todo structure, but that can be implemented in the same way as decodeJson, its mostly the same operation of transforming some input and eventually having some failure.
+# Handling failures
+
+💩 happens, but sometimes we can recover
+
+```ts {all} {maxHeight:'450px'}
+const getUserName = (userId: UserId) => pipe(
+    getUser(userId),
+    // ^? Effect<never, FetchError | JsonBodyError | UserNotFound, string>
+    Effect.map(user => user.username),
+    Effect.catchTag("FetchError", () => Effect.succeed("User#" + userId)),
+    Effect.catchTag("UserNotFound", () => Effect.succeed("DeletedUser#" + userId)),
+    Effect.orDie
+)
+// ^? Effect<never, never, string>
+```
+
+<!--
+So all the failures just stack in there?
+
+Effect has some combinators that allows to try to recover from failures or abort entirely the computation with no chance of recovery.
 -->
 
 ---
@@ -1004,32 +1010,12 @@ layout: fact
 Taking advantage of concurrency
 
 ---
-layout: center
+layout: default
 ---
 
-## Concurrency
+# Solving problem #3
 
-```ts {all} {maxHeight:'450px'}
-const getListItems = pipe(
-  getTodos,
-  Effect.flatMap((todos) =>
-    Effect.forEach(todos, (todo) => fetchListItem(todo))
-  )
-);
-// ^- T.Effect<never, UserNotFound, ListItem[]>
-```
-<!--
-Oh, do you remember what a pain was to implement concurrency with Promises and async/await?
-Here's our computation right now, running one request after the other.
-Wanna see how's simple to change it to concurrently?
--->
-
-
----
-layout: center
----
-
-## Concurrency
+Parallelism is taken care by the runtime, just tell the runtime to do so
 
 ```ts {all} {maxHeight:'450px'}
 const getListItems = pipe(
@@ -1038,14 +1024,12 @@ const getListItems = pipe(
     Effect.forEachPar(todos, (todo) => fetchListItem(todo))
   )
 );
-// ^- T.Effect<never, UserNotFound, ListItem[]>
+// ^? T.Effect<never, UserNotFound, ListItem[]>
 ```
 <!--
-Can you spot the difference?
-Really easy, we just tell Effect to run in parallel those fetchListItem.
-And that's it. Effect thanks to its fiber runtime will perform those work in parallel, safely shutting down all parallel work if any of them fails.
+Oh, do you remember what a pain was to implement concurrency with Promises and async/await?
 
-That's the beauty of the Fiber runtime of effect, it guarantees that every computation gets interrupted if not needed anymore.
+Effect has builtin support for concurrent computations, so to take full advantage of them you just need to tell the runtime to execute effects in parallel, with no extra code to be implemented.
 -->
 
 
@@ -1058,30 +1042,12 @@ Limiting concurrency.
 
 
 ---
-layout: center
+layout: default
 ---
 
-## Parallelism
+# Solving problem #4
 
-```ts {all} {maxHeight:'450px'}
-const getListItems = pipe(
-  getTodos,
-  Effect.flatMap((todos) =>
-    Effect.forEachPar(todos, (todo) => fetchListItem(todo))
-  )
-);
-// ^- T.Effect<never, UserNotFound, ListItem[]>
-```
-<!--
-Another day, another challenge.
-Do you remember how hard was to properly take care of concurrency and maximising the amout of parallel requests?
--->
-
----
-layout: center
----
-
-## Parallelism is easy!
+The runtime has options to configure how effects should be run
 
 ```ts {all} {maxHeight:'450px'}
 const getListItems = pipe(
@@ -1091,7 +1057,7 @@ const getListItems = pipe(
   ),
   Effect.withParallelism(10)
 );
-// ^- T.Effect<never, UserNotFound, ListItem[]>
+// ^? T.Effect<never, UserNotFound, ListItem[]>
 ```
 <!--
 Well, again thanks to the effect runtime that's really easy.
@@ -1108,10 +1074,12 @@ What about interruption?
 
 
 ---
-layout: center
+layout: default
 ---
 
-## Interruption
+# Solving problem #5
+
+Interruption is defined at lower level, and automatically propagated by the runtime
 
 ```ts {all} {maxHeight:'450px'}
 export const request = (input: RequestInfo, init?: RequestInit | undefined) =>
@@ -1132,7 +1100,7 @@ export const request = (input: RequestInfo, init?: RequestInit | undefined) =>
       })
     );
   });
-// ^- (input: RequestInfo, init?: RequestInit) => Effect<never, FetchError, Response>
+// ^? (input: RequestInfo, init?: RequestInit) => Effect<never, FetchError, Response>
 ```
 
 <!--
@@ -1152,10 +1120,12 @@ layout: fact
 Retrying if you can.
 
 ---
-layout: center
+layout: default
 ---
 
-## Retry policy
+# Solving problem #6
+
+Effect has a builtin fully configurable retry-policy based on Schedule
 
 ```ts {all} {maxHeight:'450px'}
 const getTodos = pipe(
@@ -1168,7 +1138,7 @@ const getTodos = pipe(
     )
   )
 );
-// ^- Effect<never, FetchError | JsonBodyError, Todo[]>
+// ^? Effect<never, FetchError | JsonBodyError, Todo[]>
 ```
 
 <!--
@@ -1181,39 +1151,15 @@ layout: fact
 ---
 
 # Sunday
-Handling failures
+Extra: Dependency injection!
 
 ---
-layout: center
+layout: default
 ---
 
-## Handling failures
+# Solving problem you will have #7
 
-```ts {all} {maxHeight:'450px'}
-const getUserName = (userId: UserId) => pipe(
-    getUser(userId),
-    // ^- Effect<never, FetchError | JsonBodyError | UserNotFound, string>
-    Effect.map(user => user.username),
-    Effect.catchTag("FetchError", () => Effect.succeed("User#" + userId)),
-    Effect.catchTag("UserNotFound", () => Effect.succeed("DeletedUser#" + userId)),
-    Effect.orDie
-)
-// ^- Effect<never, never, string>
-```
-
-<!--
-What about those failures?
-Effect has some combinators that allows to try to recover from failures or abort entirely the computation with no chance of recovery.
-In our application, we found out that if there is a fetch error or a user not found, the UI may work also with a fake user name. We catch the error by tag, and then recover with the appropriate username.
-Unfortunately there are scenarios where there is no sensible way to recover.
-In those cases you can use orDie to turn your failure in an untyped exception.
--->
-
----
-layout: center
----
-
-## Builtin typed dependency injection
+As your application grows, you'll for sure start having dependencies
 
 ```ts {all} {maxHeight:'450px'}
 interface UserService {
@@ -1230,7 +1176,7 @@ const getUserName = (userId: UserId) =>
     ),
     Effect.orDie
   );
-// ^- Effect<UserService, never, string>
+// ^? Effect<UserService, never, string>
 ```
 
 <!--
@@ -1246,10 +1192,12 @@ As we can see by hovering the type signature, the inference did its job, and ful
 -->
 
 ---
-layout: center
+layout: default
 ---
 
-## Dependency automatically stacks
+# Dependency automatically stacks
+
+Again, it's just composition (TM)
 
 ```ts {all} {maxHeight:'450px'}
 interface TodoService {
@@ -1264,34 +1212,38 @@ const getListItems = pipe(
   ),
   Effect.withParallelism(10)
 );
-// ^- T.Effect<UserService | TodoService, never, ListItem[]>
-```
+// ^? T.Effect<UserService | TodoService, never, ListItem[]>
 
-<!--
-Again, effect uses composable APIs, and that means that if you compose multiple computations with multiple service requirements, they will compose too.
--->
-
-
----
-layout: center
----
-
-## Providing dependencies
-
-```ts {all} {maxHeight:'450px'}
 const liveGetListItems = pipe(
     getListItems,
     Effect.provideService(UserService, { getUser }),
     Effect.provideService(TodoService, { getTodos })
 )
-// ^- T.Effect<never, never, ListItem[]>
+// ^? T.Effect<never, never, ListItem[]>
 ```
 
 <!--
+Again, effect uses composable APIs, and that means that if you compose multiple computations with multiple service requirements, they will compose too.
+
 Finally we can provide dependencies to our computation and as you can see, the requirements on the type argument gets cleared away as we provide all the required services.
 
 This feature is really handy, as you can provide different service implementations based on the environment (for example if you are running tests) or if there is a customer tenant that requires a differen implementation than all the other.
 -->
+
+---
+layout: default
+---
+# What Effect solved
+
+Effect has taken care for us of:
+
+- control over execution
+- retry logic
+- interruption
+- concurrency control
+- typed errors
+- dependency injection
+
 ---
 layout: fact
 ---
@@ -1311,20 +1263,20 @@ Effects can be built from a pure value in the same way you do with Promise
 
 ```ts
 const sample1 = Promise.resolve("value")
-// ^- Promise<string>
+// ^? Promise<string>
 
 const sample2 = Effect.succeed("value")
-// ^- Effect<never, never, string>
+// ^? Effect<never, never, string>
 ```
 
 or in case of a failure
 
 ```ts
 const failure1 = Promise.reject(new UserNotFoundError())
-// ^- Promise<never>
+// ^? Promise<never>
 
 const failure2 = Effect.fail(new UserNotFoundError())
-// ^- Effect<never, UserNotFoundError, never>
+// ^? Effect<never, UserNotFoundError, never>
 ```
 
 <!--
@@ -1349,17 +1301,17 @@ const async1 = new Promise<string>((resolve, reject) => {
     // ... or ...
     reject(new UserNotFoundError())
 })
-// ^- Promise<string>
+// ^? Promise<string>
 
 const async2 = Effect.async<never, UserNotFoundError, string>(callback => {
     setTimeout(() => callback(Effect.succeed("value")), 1000)
     // ... or ...
     callback(Effect.fail(new UserNotFoundError()))
 })
-// ^- Effect<never, UserNotFoundError, string>
+// ^? Effect<never, UserNotFoundError, string>
 
 const async3 = Effect.tryPromise(() => fetch("http://api.myhost.it"))
-// ^- Effect<never, unknown, Response>
+// ^? Effect<never, unknown, Response>
 ```
 
 <!--

@@ -16,7 +16,7 @@ export const request = (input: RequestInfo, init?: RequestInit | undefined) =>
     () => fetch(input, init),
     (error: unknown) => new FetchError(error)
   );
-// ^- (input: RequestInfo, init?: RequestInit) => Effect<never, FetchError, Response>
+// ^? (input: RequestInfo, init?: RequestInit) => Effect<never, FetchError, Response>
 
 class JsonBodyError {
   readonly _tag = "JsonBodyError";
@@ -34,7 +34,7 @@ const getTodos = pipe(
     request("https://jsonplaceholder.typicode.com/todos"),
     Effect.flatMap(response => decodeJson<Todo[]>(response))
 );
-// ^- Effect<never, FetchError | JsonBodyError, Todo[]>
+// ^? Effect<never, FetchError | JsonBodyError, Todo[]>
 
 class UserNotFound {
   readonly _tag = "UserNotFound";
@@ -48,7 +48,7 @@ const getUser = (userId: UserId) =>
       user ? Effect.succeed(user) : Effect.fail(new UserNotFound(userId))
     )
   );
-// ^- (userId: UserId) => T.Effect<never, UserNotFound, User>
+// ^? (userId: UserId) => T.Effect<never, UserNotFound, User>
 
 const fetchListItem = (todo: Todo) =>
   pipe(
@@ -60,7 +60,7 @@ const fetchListItem = (todo: Todo) =>
       completed: todo.completed,
     }))
   );
-// ^- (todo: Todo) => T.Effect<never, UserNotFound, ListItem>
+// ^? (todo: Todo) => T.Effect<never, UserNotFound, ListItem>
 
 const getListItems = pipe(
   getTodos,
@@ -69,7 +69,7 @@ const getListItems = pipe(
   ),
   Effect.map((e) => Array.from(Chunk.toCollection(e)))
 );
-// ^- T.Effect<never, UserNotFound, ListItem[]>
+// ^? T.Effect<never, UserNotFound, ListItem[]>
 
 export default function TodoList() {
   const [items, setItems] = React.useState<ListItem[]>([]);
