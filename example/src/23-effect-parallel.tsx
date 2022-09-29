@@ -43,7 +43,8 @@ class UserNotFound {
 
 const getUser = (userId: UserId) =>
   pipe(
-    Effect.sync(() => U.USERS.find((e) => e.id === userId)),
+    request("https://jsonplaceholder.typicode.com/users/" + userId),
+    Effect.flatMap(response => decodeJson<User>(response)),
     Effect.flatMap((user) =>
       user ? Effect.succeed(user) : Effect.fail(new UserNotFound(userId))
     )
@@ -67,6 +68,7 @@ const getListItems = pipe(
   Effect.flatMap((todos) =>
     Effect.forEachPar(todos, (todo) => fetchListItem(todo))
   ),
+  Effect.withParallelism(5),
   Effect.map((e) => Array.from(Chunk.toCollection(e)))
 );
 // ^? T.Effect<never, UserNotFound, ListItem[]>

@@ -1,6 +1,6 @@
 import * as RN from "react-native";
 import * as RNP from "react-native-paper";
-import TodoList from "./src/04-async-stealing";
+import TodoList from "./src/23-effect-parallel";
 import "./src/09-effect-primitives"
 import * as React from "react";
 

@@ -3,13 +3,12 @@
 theme: default
 # random image from a curated Unsplash collection by Anthony
 # like them? see https://unsplash.com/collections/94734566/slidev
-background: https://source.unsplash.com/collection/94734566/1920x1080
 # apply any windi css classes to the current slide
 class: 'text-center'
 # https://sli.dev/custom/highlighters.html
 highlighter: shiki
 # show line numbers in code blocks
-lineNumbers: true
+lineNumbers: false
 # some information about the slides, markdown enabled
 info: |
   ## Slidev Starter Template
@@ -21,11 +20,11 @@ drawings:
   persist: false
 # use UnoCSS (experimental)
 css: unocss
+layout: image
+image: /image-cover.jpeg
 ---
 
-# Effect-ful computations with Fibers
 
-Mattia Manzati @ React Alicante 2022
 
 ---
 layout: image-left
@@ -587,6 +586,10 @@ function getListItems(): ListItem[] {
 }
 ```
 
+<!--
+What started as a really simple computation...
+-->
+
 ---
 layout: default
 ---
@@ -634,8 +637,9 @@ function waitMillis(millis: number, signal: AbortSignal) {
   });
 }
 ```
+
 <!--
-At the end of the week I felt very disappointed.
+Ended up being a lot of code.
 I felt like I spent more time fighting with the platform, than building and implementing Business critical application logic.
 -->
 
@@ -785,7 +789,7 @@ What does the exit contains?
 
 An exit may be a success or a failure.
 If the computation succeeded, the exit will be a success and value will contain the result of type A of the computation.
-If the computation failed, the exit will contain the "cause" of the failure, and that data structure may contain one or more reason of failure, those can be a failure of type E, or an unexpected error, or an interruption signal.
+If the computation failed, effect never loses a failure, all end up in a dedicated cause type that can handle multiple error types such as defects, interruptions and typed errors
 -->
 
 ---
@@ -1010,7 +1014,8 @@ layout: fact
 Taking advantage of concurrency
 
 ---
-layout: default
+layout: showcase-left
+image: /image-23-parallel.gif
 ---
 
 # Solving problem #3
@@ -1021,7 +1026,10 @@ Parallelism is taken care by the runtime, just tell the runtime to do so
 const getListItems = pipe(
   getTodos,
   Effect.flatMap((todos) =>
-    Effect.forEachPar(todos, (todo) => fetchListItem(todo))
+    Effect.forEachPar(
+      todos, 
+      (todo) => fetchListItem(todo)
+    )
   )
 );
 // ^? T.Effect<never, UserNotFound, ListItem[]>
@@ -1042,7 +1050,8 @@ Limiting concurrency.
 
 
 ---
-layout: default
+layout: showcase-left
+image: /image-23-parallelism.gif
 ---
 
 # Solving problem #4
@@ -1053,9 +1062,12 @@ The runtime has options to configure how effects should be run
 const getListItems = pipe(
   getTodos,
   Effect.flatMap((todos) =>
-    Effect.forEachPar(todos, (todo) => fetchListItem(todo))
+    Effect.forEachPar(
+      todos, 
+      (todo) => fetchListItem(todo)
+    )
   ),
-  Effect.withParallelism(10)
+  Effect.withParallelism(5)
 );
 // ^? T.Effect<never, UserNotFound, ListItem[]>
 ```
@@ -1250,74 +1262,63 @@ layout: fact
 
 # There's more!
 
-
-
-
 ---
-layout: default
+layout: two-cols
 ---
 
-# Your first Effect
+# Effect also includes
+- `Effect`: Generic Program Definition
+- `Cause`: Representing potentially multiple failure causes of different kinds
+- `Scope`: Safe Resource Management to model things like database connections
+- `Fiber`: Low Level Concurrency Primitives
+- `Queue`: Work-Stealing Concurrent & Backpressured Queues
+- `Hub`: Like a Pub/Sub for Effects
+- `Layer`: Context Construction
+- `Metrics`: Prometheus Compatible Metrics
+- `Tracing`: OpenTelemetry Compatible Tracing
+- `Logger`: Multi-Level & Abstract Logger
 
-Effects can be built from a pure value in the same way you do with Promise
+::right::
 
-```ts
-const sample1 = Promise.resolve("value")
-// ^? Promise<string>
-
-const sample2 = Effect.succeed("value")
-// ^? Effect<never, never, string>
-```
-
-or in case of a failure
-
-```ts
-const failure1 = Promise.reject(new UserNotFoundError())
-// ^? Promise<never>
-
-const failure2 = Effect.fail(new UserNotFoundError())
-// ^? Effect<never, UserNotFoundError, never>
-```
-
-<!--
-How can we create an instance of an effect?
-There are several ways to do that, 
-the simplest way would be to create an effect from a value or a failure, in the same way we do it with promises.
-
-TypeScript users will also see how the type of an Effect better describes the computation, by giving hints of all the possible failures our computation will result into.
--->
+- `Ref`: Mutable Reference to immutable State with potentially Syncronized access and updates
+- `Schedule`: Time-based Scheduling Policies
+- `Stream`: Pull Based Effectful Streams (like an Effect that can produce 0 - infinite values)
+- `Deferred`: Like a Promise of an Effect that may be fulfilled at a later point
+- `STM`: Transactional Data Structures & Coordination
+- `Semaphore`: Concurrency Control
+- `Clock`: System Clock & Time Utilities
+- `Random`: Deterministic Seeded Random Utilities
+- `Runtime`: Runtime Configuration and Runner
+- `Supervisor`: Fiber Monitoring
 
 ---
-layout: default
+layout: fact
 ---
 
-# Async Effect
+# Should I rewrite my entire codebase tomorrow?
+No! You can convert an Effect into a Promise!
 
-Effects can be also asynchronous
+---
+layout: center
+---
+# Where to go from here?
 
-```ts
-const async1 = new Promise<string>((resolve, reject) => {
-    setTimeout(() => resolve("value"), 1000)
-    // ... or ...
-    reject(new UserNotFoundError())
-})
-// ^? Promise<string>
+You can find the entire TODO app we've seen today here
 
-const async2 = Effect.async<never, UserNotFoundError, string>(callback => {
-    setTimeout(() => callback(Effect.succeed("value")), 1000)
-    // ... or ...
-    callback(Effect.fail(new UserNotFoundError()))
-})
-// ^? Effect<never, UserNotFoundError, string>
+[https://github.com/mattiamanzati/effect-todo-app](https://github.com/mattiamanzati/effect-todo-app)
 
-const async3 = Effect.tryPromise(() => fetch("http://api.myhost.it"))
-// ^? Effect<never, unknown, Response>
-```
+<br/>
+<img src="/image-repo-qr.png" width="150" />
 
-<!--
-We can also build asynchronous effects, in the same way we do with promises.
+---
+layout: center
+---
 
-The same benefits for typescript users apply here, by just looking at the type we get full informations about the computation.
+# Thanks for your time!
+- Twitter: @mattiamanzati
+- GitHub Repo: [https://github.com/effect-ts/core](https://github.com/effect-ts/core)
+- Discord: [https://discord.gg/RVZKYxWfAJ](https://discord.gg/RVZKYxWfAJ)
 
-Obviuously the platform has lot of APIs that work with promises, we can transform a promise into an asyncronous effect anytime by just using "tryPromise".
--->
+<br/>
+<img src="/image-discord.png" width="150" />
+
