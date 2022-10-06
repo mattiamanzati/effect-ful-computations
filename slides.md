@@ -22,6 +22,7 @@ drawings:
 css: unocss
 layout: image
 image: /image-cover.jpeg
+download: true
 ---
 
 
